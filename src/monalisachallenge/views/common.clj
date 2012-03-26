@@ -16,12 +16,17 @@
                   [:div.container
                    [:a.btn.btn-navbar
                     [:span.icon-bar]]
-                  [:a.brand "Mona Lisa Challenge"]
+                   [:a.brand
+                    [:img {:src "/img/mona-lisa-head-192.jpg" :style "width: 20px; margin-right: 5px;"}]
+                    "Mona Lisa Challenge"]
                    [:div.nav-collapse
                     [:ul.nav
                      [:li.active
-                      [:a {"href" "#"} "Home"]]]]]]]
-                [:div.container content] 
+                      [:a {"href" "/"} "Home"]]
+                     [:li
+                      [:a {"href" "/search"} "Search"]]
+                     [:li
+                      [:a {"href" "/results"} "Results"]]]]]]]
+                [:div.container content]
                 (include-js "http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js")
-                (include-js "/js/bootstrap.min.js")
-                (noir.cljs.core/include-scripts))]))
+                (include-js "/js/bootstrap.min.js"))]))

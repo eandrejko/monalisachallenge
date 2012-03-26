@@ -2,7 +2,7 @@
 ;; to demonstrate a working proof of concept
 
 
-(ns test
+(ns monalisachallenge.client
   (:require
    [goog.dom :as dom]
    [goog.color :as colors]
@@ -15,10 +15,6 @@
 
 (def g (doto (graphics/CanvasGraphics. (str width) (str height))
          (.render (dom/getElement "representation"))))
-
-(doto (graphics/CanvasGraphics. (str width) (str height))
-  (.render (dom/getElement "reference"))
-  (.drawImage 0 0 width height "/img/mona-lisa-head-192.jpg"))
 
 (defn draw-graph 
     []
@@ -185,7 +181,12 @@
     (-> (dom/getElement "info")
         (dom/setTextContent (str (measure-representation reference canvas @best) " " @counter)))))
 
-(let [timer (goog.Timer. 1500)]
-  (do (iterate)
+(defn ^:export start
+  []
+  (doto (graphics/CanvasGraphics. (str width) (str height))
+    (.render (dom/getElement "reference"))
+    (.drawImage 0 0 width height "/img/mona-lisa-head-192.jpg"))
+  (let [timer (goog.Timer. 1500)]
+    (do (iterate)
       (. timer (start))
-      (events/listen timer goog.Timer/TICK iterate)))
+      (events/listen timer goog.Timer/TICK iterate))))

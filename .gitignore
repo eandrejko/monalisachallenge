@@ -7,3 +7,4 @@ pom.xml
 /resources/public/cljs/cljs/core.cljs
 /resources/public/cljs/cljs/core.js
 /resources/public/cljs/test.js
+/resources/public/cljs/monalisachallenge/client.js
