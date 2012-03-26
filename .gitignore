@@ -3,3 +3,7 @@ pom.xml
 /lib/
 /classes/
 .lein-deps-sum
+/resources/public/cljs/bootstrap.js
+/resources/public/cljs/cljs/core.cljs
+/resources/public/cljs/cljs/core.js
+/resources/public/cljs/test.js
