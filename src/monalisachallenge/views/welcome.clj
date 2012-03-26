@@ -1,17 +1,17 @@
 (ns monalisachallenge.views.welcome
-  (:require [monalisachallenge.views.common :as common])
-  (:use [noir.core :only [defpage]]
-        [noir.response]))
+  (:require [monalisachallenge.views.common :as common]
+            [noir.response :as response])
+  (:use [noir.core :only [defpage]]))
 
 (defpage "/" []
-  (set-headers
+  (response/set-headers
    {"Cache-Control" "public, max-age=300"}
    (common/layout
     [:div.hero-unit
      [:h1 "The Mona Lisa Challenge"]
      [:p "Help find the solution: How can the Mona Lisa be optimally represented using only "
-      [:em
-       "fifty tranluscent polygons"]
+      [:em [:b
+            "fifty translucent polygons"]]
       "?"]
      [:p
       [:a.btn.btn-primary.btn-large {:href "/search"} "Join the Search »"]]]
@@ -24,7 +24,9 @@
       [:h2 "The Results"]
       [:img {:src "/img/mona-lisa-head-192.jpg" :style "float: left; width: 80px;"}]
       [:img {:src "/img/mona-lisa-head-192.jpg" :style "float: left; width: 80px; margin-left: 10px;"}]
-      [:p {:style "clear: both;"} "The best solution found so far after searching."]
+      [:p {:style "clear: both;"} "The best solution found so far after searching "
+       100
+       " possiblities"]
       [:p [:a.btn {:href "/results"} "View Results »"]]]
      [:div.span4
       [:h2 "Contribute"]
