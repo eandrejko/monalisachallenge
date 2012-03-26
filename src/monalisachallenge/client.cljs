@@ -133,7 +133,7 @@
   (if (and (< (rand) 0.1)
            (< (count polygons) max-polygons))
     (conj polygons (random-polygon))
-    (map mutate-polygon polygon)))
+    (map mutate-polygon polygons)))
 
 (defn mutate-representation
   [repr]
