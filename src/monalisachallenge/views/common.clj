@@ -1,11 +1,11 @@
-(ns noir-bootstrap.views.common
+(ns monalisachallenge.views.common
   (:use [noir.core :only [defpartial]]
-        [hiccup.page-helpers :only [include-css include-js html5]]))
+        [hiccup.page :only [include-css include-js html5]]))
 
 (defpartial layout [& content]
             (html5
               [:head
-               [:title "noir-bootstrap"]
+               [:title "The Mona Lisa Challenge"]
                (include-css "/css/bootstrap.css")
                (include-css "/css/bootstrap-responsive.css")
                [:style "body { padding-top: 60px; }"]]
@@ -31,4 +31,5 @@
                       [:a {"href" "https://github.com/ibdknox/noir"} "Source"]]]]]]]
                 [:div.container content] 
                 (include-js "http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js")
-                (include-js "/js/bootstrap.min.js"))]))
+                (include-js "/js/bootstrap.min.js")
+                (noir.cljs.core/include-scripts))]))
