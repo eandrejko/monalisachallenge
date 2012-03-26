@@ -1,35 +1,38 @@
 (ns monalisachallenge.views.welcome
   (:require [monalisachallenge.views.common :as common])
-  (:use [noir.core :only [defpage]]))
+  (:use [noir.core :only [defpage]]
+        [noir.response]))
 
 (defpage "/" []
-  (common/layout
-   [:div.hero-unit
-    [:h1 "The Mona Lisa Challenge"]
-    [:p "Help find the solution: How can the Mona Lisa be optimally represented using only "
-     [:em
-      "fifty tranluscent polygons"]
-     "?"]
-    [:p
-     [:a.btn.btn-primary.btn-large {:href "/search"} "Join the Search »"]]]
-   [:div.row
+  (set-headers
+   {"Cache-Control" "public, max-age=300"}
+   (common/layout
+    [:div.hero-unit
+     [:h1 "The Mona Lisa Challenge"]
+     [:p "Help find the solution: How can the Mona Lisa be optimally represented using only "
+      [:em
+       "fifty tranluscent polygons"]
+      "?"]
+     [:p
+      [:a.btn.btn-primary.btn-large {:href "/search"} "Join the Search »"]]]
+    [:div.row
      [:div.span4
       [:h2 "The Project"]
       "The Mona Lisa problem is a toy problem in the domain of optimization theory. There are many well known algorithms to search for a solution. This project uses a distributed evolutionary algorithm, implemented in the browser."
       [:p [:a.btn {:href "/details"} "How it works »"]]]
-    [:div.span4
-     [:h2 "The Results"]
-     [:img {:src "/img/mona-lisa-head-192.jpg" :style "float: left; width: 80px;"}]
-     [:img {:src "/img/mona-lisa-head-192.jpg" :style "float: left; width: 80px; margin-left: 10px;"}]
-     [:p {:style "clear: both;"} "The best solution so far after searching."]
-     [:p [:a.btn {:href "/results"} "View Results »"]]]
-    [:div.span4
-     [:h2 "Contribute"]
-     "Contribute computational power to the search for the solution:"
+     [:div.span4
+      [:h2 "The Results"]
+      [:img {:src "/img/mona-lisa-head-192.jpg" :style "float: left; width: 80px;"}]
+      [:img {:src "/img/mona-lisa-head-192.jpg" :style "float: left; width: 80px; margin-left: 10px;"}]
+      [:p {:style "clear: both;"} "The best solution found so far after searching."]
+      [:p [:a.btn {:href "/results"} "View Results »"]]]
+     [:div.span4
+      [:h2 "Contribute"]
+      "Contribute computational power to the search for the solution:"
       [:ul
        [:li "Implement your own solutions and submit your results"]
        [:li "Run the distributed computational client in your browser"]]
-     [:p [:a.btn {:href "/contribute"} "Contribute a solution »"]]]]))
+      [:p [:a.btn {:href "/contribute"} "Contribute a solution »"]]]])))
 
 (defpage "/search" []
   (common/layout
