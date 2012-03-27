@@ -16,13 +16,6 @@
 (def g (doto (graphics/CanvasGraphics. (str width) (str height))
          (.render (dom/getElement "representation"))))
 
-(defn draw-graph 
-    []
-    (.clear g true)
-    (.setSize g width height)
-    (.drawRect g  0 0 width height
-               (graphics/Stroke. 1 "#444") (graphics/SolidFill. "#000" 0.1)))
-
 (defn color-as-hex
   "converts rgb triple to hex string"
   [color]
