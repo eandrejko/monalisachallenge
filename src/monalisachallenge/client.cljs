@@ -8,8 +8,10 @@
    [goog.dom :as dom]
    [goog.color :as colors]
    [goog.events :as events]
-   [goog.graphics :as graphics]
-   [monalisachallenge.loss :as loss]))
+   [goog.graphics :as graphics] 
+   [goog.net.XhrIo :as xhr]
+   [monalisachallenge.loss :as loss]
+   [cljs.reader :as reader]))
 
 (def width 192)
 (def height 239)
@@ -88,18 +90,39 @@
          (sort-by last)
          (ffirst))))
 
+(defn make-js-map
+  "makes a javascript map from a clojure one"
+  [cljmap]
+  (let [out (js-obj)]
+    (doall (map #(aset out (name (first %)) (second %)) cljmap))
+    out))
+
+(defn set-best
+  [e]
+  (swap! best
+         (fn [best]
+           (or
+            (:representation (reader/read-string (.getResponseText (.-currentTarget e))))
+            (random-representation params)))))
+
 (defn iterate
   [params]
   (let [reference   (-> (dom/$$ "canvas")
                         (aget 1))
         canvas      (-> (dom/$$ "canvas")
                         (aget 0))]
-    (swap! best best-descendant params reference canvas)
-    ;;(.log js/console (measure-loss a b))
-    (swap! counter inc)
-    (-> (dom/getElement "info")
-        (dom/setTextContent (str (count (get @best :polygons)) " "
-                            (measure-representation reference canvas @best 0) " " @counter)))))
+    (if-let [prev-best @best]
+      (do
+        (swap! best best-descendant params reference canvas)
+        ;;(.log js/console (measure-loss a b))
+        (swap! counter inc)
+        (if (not= prev-best @best)
+          (xhr/send "/representation/" set-best "POST" (pr-str @best) (make-js-map {"Content-type" "text/json"}))
+          (if (= 0 (mod @counter 100))
+            (xhr/send "/representation/" set-best)))
+        (-> (dom/getElement "info")
+            (dom/setTextContent (str (count (get @best :polygons)) " "
+                                     (measure-representation reference canvas @best 0) " " @counter)))))))
 
 (def params {
              :width 192
@@ -107,21 +130,22 @@
              :refine-polygon-thresh 0.1
              :polygon-color-noise 10
              :polygon-alpha-noise 0.1
-             :add-polygon-thresh 0.1
-             :background-color-noise 10
+             :add-polygon-thresh 0.05
+             :background-color-noise 0.1
              :initial-polygon-count 5
-             :point-noise 20
+             :point-noise 10
              })
 
 (def counter (atom 0))
-(def best (atom (random-representation params)))
+(def best (atom nil))
 
 (defn ^:export start
   []
   (doto (graphics/CanvasGraphics. (str width) (str height))
     (.render (dom/getElement "reference"))
     (.drawImage 0 0 width height "/img/mona-lisa-head-192.jpg"))
-  (let [timer  (goog.Timer. 1500)]
+  (xhr/send "/representation/" set-best)
+  (let [timer  (goog.Timer. 700)]
     (do (iterate params)
       (. timer (start))
       (events/listen timer goog.Timer/TICK (partial iterate params)))))

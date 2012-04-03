@@ -9,3 +9,5 @@ pom.xml
 /resources/public/cljs/test.js
 /resources/public/cljs/monalisachallenge/client.js
 /resources/public/cljs/monalisachallenge/representation.js
+/resources/public/cljs/cljs/reader.cljs
+/resources/public/cljs/cljs/reader.js
