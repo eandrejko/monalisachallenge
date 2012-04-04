@@ -3,7 +3,6 @@
 
 
 (ns monalisachallenge.client
-  (:use [monalisachallenge.representation :only [random-representation mutate-representation]])
   (:require
    [goog.dom :as dom]
    [goog.color :as colors]
@@ -11,7 +10,9 @@
    [goog.graphics :as graphics] 
    [goog.net.XhrIo :as xhr]
    [monalisachallenge.loss :as loss]
-   [cljs.reader :as reader]))
+   [cljs.reader :as reader]
+   [monalisachallenge.hyper :as hyper]
+   [monalisachallenge.representation :as repr]))
 
 (def width 192)
 (def height 239)
@@ -72,7 +73,7 @@
 
 (defn best-descendant
   [repr params reference canvas]
-  (let [descendants (repeatedly 5 (partial mutate-representation params repr))
+  (let [descendants (repeatedly 5 (partial repr/mutate-representation params repr))
         descendants (conj descendants repr)
         ranked      (->> descendants
                          (map #(vector
@@ -103,7 +104,7 @@
          (fn [best]
            (or
             (:representation (reader/read-string (.getResponseText (.-currentTarget e))))
-            (random-representation params)))))
+            (repr/random-representation params)))))
 
 (defn iterate
   [params]
@@ -112,14 +113,18 @@
         canvas      (-> (dom/$$ "canvas")
                         (aget 0))]
     (if-let [prev-best @best]
-      (do
-        (swap! best best-descendant params reference canvas)
+      (let [p (hyper/mutate @current-params)]
+        ;;(.log js/console (pr-str params))
+        (swap! best best-descendant p reference canvas)
         ;;(.log js/console (measure-loss a b))
         (swap! counter inc)
+        (if (= 0 (mod @counter 100))
+            (xhr/send "/representation/" set-best))
         (if (not= prev-best @best)
-          (xhr/send "/representation/" set-best "POST" (pr-str @best) (make-js-map {"Content-type" "text/json"}))
-          (if (= 0 (mod @counter 100))
-            (xhr/send "/representation/" set-best)))
+          (do
+            (swap! current-params (fn [_] p))
+            (.log js/console (pr-str (dissoc p :last :limits)))
+            (xhr/send "/representation/" set-best "POST" (pr-str @best) (make-js-map {"Content-type" "text/json"}))))
         (-> (dom/getElement "info")
             (dom/setTextContent (str (count (get @best :polygons)) " "
                                      (measure-representation reference canvas @best 0) " " @counter)))))))
@@ -131,13 +136,22 @@
              :polygon-color-noise 10
              :polygon-alpha-noise 0.1
              :add-polygon-thresh 0.05
-             :background-color-noise 0.1
+             :background-color-noise 10
              :initial-polygon-count 5
              :point-noise 10
+             :limits {
+                      :refine-polygon-thresh [0 1]
+                      :polygon-alpha-noise [0 1]
+                      :polygon-color-noise [0 30]
+                      :add-polygon-thresh [0 1]
+                      :background-color-noise [0 15]
+                      :point-noise [0 50]
+                      }
              })
 
 (def counter (atom 0))
 (def best (atom nil))
+(def current-params (atom params))
 
 (defn ^:export start
   []
@@ -147,5 +161,5 @@
   (xhr/send "/representation/" set-best)
   (let [timer  (goog.Timer. 700)]
     (do (iterate params)
-      (. timer (start))
-      (events/listen timer goog.Timer/TICK (partial iterate params)))))
+        (. timer (start))
+        (events/listen timer goog.Timer/TICK (partial iterate params)))))

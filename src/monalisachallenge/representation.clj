@@ -1,4 +1,5 @@
-(ns monalisachallenge.representation)
+(ns monalisachallenge.representation
+  (:require [monalisachallenge.stats :as stats]))
 
 (def default-params {
              :width 192
@@ -12,11 +13,6 @@
              :point-noise 20
              })
 
-(defn urand
-  "uniform random number betwen a and b"
-  [a b]
-  (+ a (* (rand) (- b a))))
-
 (defn random-polygon
   "produces a random polygon"
   [params]
@@ -25,7 +21,7 @@
         color    [(rand-int 255) (rand-int 255) (rand-int 255)]
         vertices 4;;(rand-int 25)
         points   (repeatedly vertices #(vector (rand-int width) (rand-int height)))
-        alpha    (urand 0.5 1.0)]
+        alpha    (stats/urand 0.5 1.0)]
     {:color color
      :alpha alpha
      :points points}))
@@ -39,35 +35,13 @@
    :background [(rand-int 255) (rand-int 255) (rand-int 255)]})
 
 
-(defn random-normal
-  [var]
-  (let [u (rand)
-        v (rand)]
-    (* var
-       (Math/sqrt
-        (* -2 (Math/log u)))
-       (Math/cos (* 2 Math/PI v)))))
-
-(defn add-int-noise
-  [var x]
-  (Math/round (+ x (random-normal var))))
-
-(defn add-noise
-  [var x]
-  (+ x (random-normal var)))
-
-(defn clamp
-  "clamps x between a and b"
-  [x a b]
-  (min (max x a) b))
-
 (defn mutate-point
   [params point]
   (let [[x y] point
-        x     (add-int-noise (get params :point-noise) x)
-        y     (add-int-noise (get params :point-noise) y)
-        x     (clamp x 0 (get params :width))
-        y     (clamp y 0 (get params :height))]
+        x     (stats/add-int-noise (get params :point-noise) x)
+        y     (stats/add-int-noise (get params :point-noise) y)
+        x     (stats/clamp x 0 (get params :width))
+        y     (stats/clamp y 0 (get params :height))]
     [x y]))
 
 (def max-vertices 25)
@@ -87,14 +61,14 @@
 (defn mutate-polygon
   [params polygon]
   (let [[r g b] (get polygon :color)
-        r       (-> (add-int-noise (get params :polygon-color-noise) r)
-                    (clamp 0 255))
-        g       (-> (add-int-noise (get params :polygon-color-noise) g)
-                    (clamp 0 255))
-        b       (-> (add-int-noise (get params :polygon-color-noise) b)
-                    (clamp 0 255))
-        alpha   (-> (add-noise (get params :polygon-alpha-noise) (get polygon :alpha))
-                    (clamp 0.0 1.0))
+        r       (-> (stats/add-int-noise (get params :polygon-color-noise) r)
+                    (stats/clamp 0 255))
+        g       (-> (stats/add-int-noise (get params :polygon-color-noise) g)
+                    (stats/clamp 0 255))
+        b       (-> (stats/add-int-noise (get params :polygon-color-noise) b)
+                    (stats/clamp 0 255))
+        alpha   (-> (stats/add-noise (get params :polygon-alpha-noise) (get polygon :alpha))
+                    (stats/clamp 0.0 1.0))
         points  (->> (get polygon :points)
                      (map (partial mutate-point params))
                      ((partial refine-points params)))]
@@ -116,12 +90,12 @@
 (defn mutate-representation
   [params repr]
   (let [[r g b] (get repr :background)
-        r       (-> (add-int-noise (get params :background-color-noise) r)
-                    (clamp 0 255))
-        g       (-> (add-int-noise (get params :background-color-noise) g)
-                    (clamp 0 255))
-        b       (-> (add-int-noise (get params :background-color-noise) b)
-                    (clamp 0 255))]
+        r       (-> (stats/add-int-noise (get params :background-color-noise) r)
+                    (stats/clamp 0 255))
+        g       (-> (stats/add-int-noise (get params :background-color-noise) g)
+                    (stats/clamp 0 255))
+        b       (-> (stats/add-int-noise (get params :background-color-noise) b)
+                    (stats/clamp 0 255))]
     (merge repr
            {:background [r g b]
             :polygons (mutate-polygons params (get repr :polygons))})))
