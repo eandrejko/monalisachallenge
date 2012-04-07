@@ -79,28 +79,49 @@
 
 (def best-repr (atom nil))
 
+(defn query-best
+  "queries for best representation"
+  []
+  (-> (sdb/query
+      config
+      "select * from monalisachallenge where score > '0' order by score limit 1")
+      (first)))
+
+(def base-url "http://s3.amazonaws.com/monalisachallenge/mona-lisas/representations/%s.png")
+
+(defn url-of-repr
+  "returns URL for image of representation"
+  [id]
+  (format base-url id))
+
+(defn url-of-best
+  []
+  (-> (query-best)
+      (::sdb/id)
+      (url-of-repr)))
+
 (defn best-representation
   "returns the representation with the best score"
   []
   (if-let [repr @best-repr]
     repr
-    (let [result (sdb/query
-                  config
-                  "select * from monalisachallenge where score > '0' order by score limit 1")
-          path   (:representation-path (first result))
+    (let [result (query-best)
+          path   (:representation-path result)
           content (s3/get-object cred "monalisachallenge" path)]
       (parse-string (slurp (:content content)) true))))
 
 (defn save!
   "saves a representation to SimpleDB and a rendered image to s3"
   [repr]
-  (let [id        (hash-of-repr repr)
-        rendering (render-representation repr)
-        reference (reference-for-repr repr)
+  (let [base      (:representation repr)
+        id        (hash-of-repr base)
+        parent    (hash-of-repr (:parent repr))
+        rendering (render-representation base)
+        reference (reference-for-repr base)
         score     (score-representation rendering reference)
         scores    (format "%032.0f" score)
         path      (format "mona-lisa-representations/%s.json" id)
-        repr      (assoc repr :score score)]
+        repr      (assoc base :score score)]
     (s3/put-object cred "monalisachallenge" path (generate-string repr))
     (s3/put-object cred "monalisachallenge" (format "mona-lisas/representations/%s.png" id)
                    (make-input-stream rendering)
@@ -109,7 +130,8 @@
     (sdb/put-attrs config "monalisachallenge"
                    {::sdb/id id
                     :representation-path path
-                    :score scores})
+                    :score scores
+                    :parent parent})
     (swap! best-repr
            (fn [best]
              (if (and best (< (:score best) (:score repr)))
