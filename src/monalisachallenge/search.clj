@@ -2,7 +2,8 @@
   (:require [monalisachallenge.representation :as r]
             [monalisachallenge.models.representation :as m]
             [monalisachallenge.rendering :as n]
-            [monalisachallenge.hyper :as h]))
+            [monalisachallenge.hyper :as h])
+  (:gen-class))
 
 (defn start
   "returns representation to use as search start point"
@@ -48,6 +49,6 @@
 
 (defn -main [& args]
   (.setLevel (java.util.logging.Logger/getLogger "com.amazonaws") java.util.logging.Level/WARNING)
-  (search {:pop-size 500
-           :random-start false
+  (search {:pop-size 100
+           :random-start true
            :mutate-params false}))
