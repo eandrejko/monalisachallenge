@@ -11,6 +11,8 @@
                [:style "body { padding-top: 60px; }"]]
               [:body
                (list
+                (include-js "http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js")
+                (include-js "/js/bootstrap.min.js")
                 [:div.navbar.navbar-fixed-top {"data-toggle" "collapse" "data-target" ".nav-collapse"}
                  [:div.navbar-inner
                   [:div.container
@@ -24,9 +26,9 @@
                      [:li.active
                       [:a {"href" "/"} "Home"]]
                      [:li
-                      [:a {"href" "/search"} "Search"]]
+                      [:a {"href" "/about"} "About"]]
+                     [:li
+                      [:a {"href" "/contribute"} "Contribute"]]
                      [:li
                       [:a {"href" "/results"} "Results"]]]]]]]
-                [:div.container content]
-                (include-js "http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js")
-                (include-js "/js/bootstrap.min.js"))]))
+                [:div.container content])]))

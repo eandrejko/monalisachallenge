@@ -84,6 +84,13 @@
 
 (def best-repr (atom nil))
 
+(defn history-of-search
+  "returns a seq of k image urls showing the history of the search"
+  [id k]
+  (->> (lineage/limited-lineage id k)
+       (reverse)
+       (map url-of-repr)))
+
 (defn query-best
   "queries for best representation"
   []
