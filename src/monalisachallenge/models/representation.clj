@@ -84,6 +84,13 @@
 
 (def best-repr (atom nil))
 
+(def base-url "http://s3.amazonaws.com/monalisachallenge/mona-lisas/representations/%s.png")
+
+(defn url-of-repr
+  "returns URL for image of representation"
+  [id]
+  (format base-url id))
+
 (defn history-of-search
   "returns a seq of k image urls showing the history of the search"
   [id k]
@@ -98,13 +105,6 @@
       config
       "select * from monalisachallenge where score > '0' order by score limit 1")
       (first)))
-
-(def base-url "http://s3.amazonaws.com/monalisachallenge/mona-lisas/representations/%s.png")
-
-(defn url-of-repr
-  "returns URL for image of representation"
-  [id]
-  (format base-url id))
 
 (defn get-repr
   "returns representation from id"
