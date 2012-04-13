@@ -3,7 +3,9 @@
         [cheshire.core])
   (:require [cemerick.rummage :as sdb]
             [cemerick.rummage.encoding :as enc]
-            [aws.sdk.s3 :as s3])
+            [aws.sdk.s3 :as s3]
+            [monalisachallenge.models.lineage :as lineage]
+            [monalisachallenge.representation :as representation])
   (:import [java.awt Graphics Color]
            [java.awt.image BufferedImage]
            [javax.imageio ImageIO]
@@ -55,6 +57,7 @@
 
 (defn reference-for-repr
   [repr]
+  {:pre [(representation/valid-representation? repr)]}
   (let [width  (:width repr)
         height (:height repr)]
     (reference-image width height)))
@@ -74,7 +77,9 @@
 (defn hash-of-repr
   "returns a hash of representation"
   [repr]
-  (let [repr  (pr-str repr)]
+  {:pre [(representation/valid-representation? repr)]}
+  (let [repr  (select-keys repr [:height :width :polygons :background])
+        repr  (pr-str repr)]
         (.substring (md5 repr) 0 8)))
 
 (def best-repr (atom nil))
@@ -94,47 +99,88 @@
   [id]
   (format base-url id))
 
+(defn get-repr
+  "returns representation from id"
+  [id]
+  (sdb/get-attrs config "monalisachallenge" id))
+
 (defn url-of-best
   []
   (-> (query-best)
-      (::sdb/id)
-      (url-of-repr)))
+   (::sdb/id)
+   (url-of-repr)))
+
+(defn id-of-best
+  []
+  (-> (query-best)
+      (::sdb/id)))
+
+(defn read-representation-for-query-result
+  "reads representation from s3"
+  [result]
+  (let  [path    (:representation-path result)
+         content (s3/get-object cred "monalisachallenge" path)]
+      (parse-string (slurp (:content content)) true)))
 
 (defn best-representation
   "returns the representation with the best score"
   []
   (if-let [repr @best-repr]
     repr
-    (let [result (query-best)
-          path   (:representation-path result)
-          content (s3/get-object cred "monalisachallenge" path)]
-      (parse-string (slurp (:content content)) true))))
+    (if-let [result (query-best)]
+          (read-representation-for-query-result result))))
+
+(defn best-score
+  "determines score of best representation"
+  []
+  (score-representation (render-representation (best-representation))
+                        (reference-for-repr (best-representation))))
+
+(defn score-of-id
+  "scores representation with id"
+  [id]
+  (if-let [result (sdb/get-attrs config "monalisachallenge" id)]
+    (let [repr       (read-representation-for-query-result result)
+          repr       (:representation repr)
+          rendering  (render-representation repr)
+          reference  (reference-for-repr repr)]
+      (score-representation rendering reference))))
 
 (defn save!
   "saves a representation to SimpleDB and a rendered image to s3"
   [repr]
+  {:pre  [(representation/valid-representation? (:representation repr))
+          (if (:parent repr)
+            (representation/valid-representation? (:parent repr))
+            true)]
+   :post [(representation/valid-representation? (:representation %))
+          (if (:parent %)
+            (representation/valid-representation? (:parent %))
+            true)]}
   (let [base      (:representation repr)
         id        (hash-of-repr base)
-        parent    (hash-of-repr (:parent repr))
+        parent    (if-let [p (:parent repr)]
+                    (hash-of-repr p))
         rendering (render-representation base)
         reference (reference-for-repr base)
         score     (score-representation rendering reference)
         scores    (format "%032.0f" score)
         path      (format "mona-lisa-representations/%s.json" id)
-        repr      (assoc base :score score)]
-    (s3/put-object cred "monalisachallenge" path (generate-string repr))
-    (s3/put-object cred "monalisachallenge" (format "mona-lisas/representations/%s.png" id)
-                   (make-input-stream rendering)
-                   :content-type "image/png"
-                   :canned-acl :public-read)
-    (sdb/put-attrs config "monalisachallenge"
-                   {::sdb/id id
-                    :representation-path path
-                    :score scores
-                    :parent parent})
-    (swap! best-repr
-           (fn [best]
-             (if (and best (< (:score best) (:score repr)))
-               repr
-               repr)))
+        base      (assoc repr :score score)]
+    (if (or (not (score-of-id parent)) (< score (score-of-id parent)))
+      (do
+        (s3/put-object cred "monalisachallenge" path (generate-string base))
+        (s3/put-object cred "monalisachallenge" (format "mona-lisas/representations/%s.png" id)
+                       (make-input-stream rendering)
+                       :content-type "image/png"
+                       :canned-acl :public-read)
+        (sdb/put-attrs config "monalisachallenge"
+                       {::sdb/id id
+                        :representation-path path
+                        :score scores
+                        :numerical-score score
+                        :parent parent})
+        ;;(lineage/lineage id) ;; save lineage to cache
+        (swap! best-repr
+               (fn [best] (if (or (not (:score best)) (< (:score base) (:score best))) base best)))))
     (best-representation)))

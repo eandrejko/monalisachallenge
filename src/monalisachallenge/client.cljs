@@ -59,15 +59,18 @@
   (->> (map #(Math/abs (- (aget pixel-array-a %) (aget pixel-array-b %))) (range (* width height 4)))
        (reduce +)))
 
-
-(defn measure-representation
-  [reference canvas repr i]
+(defn draw-representation
+  [repr]
   (.clear g true)
   (.setSize g width height)
   (.drawRect g 0 0 width height
              (graphics/Stroke. 1 "#444")
              (graphics/SolidFill. (color-as-hex (get repr :background)) 1))
-  (doall (map (partial draw-polygon g) (get repr :polygons)))
+  (doall (map (partial draw-polygon g) (get repr :polygons))))
+
+(defn measure-representation
+  [reference canvas repr]
+  (draw-representation repr)
   (loss/l2 (get-image-data reference)
            (get-image-data g)))
 
@@ -78,7 +81,7 @@
         ranked      (->> descendants
                          (map #(vector
                                 %
-                                (measure-representation reference canvas % 0)))
+                                (measure-representation reference canvas %)))
                          (doall))
         _ (if (< (rand) 0.1)
             (do
@@ -100,66 +103,73 @@
 
 (defn set-best
   [e]
-  (swap! best
-         (fn [best]
-           (or
-            (:representation (reader/read-string (.getResponseText (.-currentTarget e))))
-            (repr/random-representation params)))))
+  (let [result (reader/read-string (.getResponseText (.-currentTarget e)))]
+    (do
+      (swap! best
+             (fn [best]
+               (or
+                (:representation result)
+                (repr/random-representation @current-params))))
+      (swap! current-params
+             (fn [params]
+               (or (:hyper (:representation result))
+                   params))))))
+
+(defn reference-canvas
+  []
+  (-> (dom/$$ "canvas")
+      (aget 1)))
+
+(defn representation-canvas
+  []
+  (-> (dom/$$ "canvas")
+      (aget 0)))
 
 (defn iterate
   [params]
-  (let [reference   (-> (dom/$$ "canvas")
-                        (aget 1))
-        canvas      (-> (dom/$$ "canvas")
-                        (aget 0))]
+  (let [reference   (reference-canvas)
+        canvas      (representation-canvas)]
     (if-let [prev-best @best]
       (let [p (hyper/mutate @current-params)]
         ;;(.log js/console (pr-str params))
         (swap! best best-descendant p reference canvas)
         ;;(.log js/console (measure-loss a b))
         (swap! counter inc)
-        (if (= 0 (mod @counter 100))
-            (xhr/send "/representation/" set-best))
         (if (not= prev-best @best)
           (do
             (swap! current-params (fn [_] p))
-            (.log js/console (pr-str (dissoc p :last :limits)))
-            (xhr/send "/representation/" set-best "POST" (pr-str @best) (make-js-map {"Content-type" "text/json"}))))
+            ;;(.log js/console (pr-str (dissoc p :last :limits)))
+            ;;(.log js/console (pr-str prev-best) (pr-str @best))
+            (let [results {:representation @best
+                           :hyper @current-params
+                           :parent prev-best}]
+              (xhr/send "/representation/" set-best "POST" (pr-str results)
+                        (make-js-map {"Content-type" "text/json"})))
+            (.log js/console (count (:polygons @best))))
+          (if (= 0 (mod @counter 100))
+            (xhr/send "/representation/" set-best)))
         (-> (dom/getElement "info")
             (dom/setTextContent (str (count (get @best :polygons)) " "
-                                     (measure-representation reference canvas @best 0) " " @counter)))))))
-
-(def params {
-             :width 192
-             :height 239
-             :refine-polygon-thresh 0.1
-             :polygon-color-noise 10
-             :polygon-alpha-noise 0.1
-             :add-polygon-thresh 0.05
-             :background-color-noise 10
-             :initial-polygon-count 5
-             :point-noise 10
-             :limits {
-                      :refine-polygon-thresh [0 1]
-                      :polygon-alpha-noise [0 1]
-                      :polygon-color-noise [0 30]
-                      :add-polygon-thresh [0 1]
-                      :background-color-noise [0 15]
-                      :point-noise [0 50]
-                      }
-             })
+                                     (measure-representation reference canvas @best) " " @counter)))))))
 
 (def counter (atom 0))
 (def best (atom nil))
-(def current-params (atom params))
+(def current-params (atom repr/default-params))
 
-(defn ^:export start
+(defn ^:export init
   []
   (doto (graphics/CanvasGraphics. (str width) (str height))
     (.render (dom/getElement "reference"))
     (.drawImage 0 0 width height "/img/mona-lisa-head-192.jpg"))
-  (xhr/send "/representation/" set-best)
-  (let [timer  (goog.Timer. 700)]
+  ;;(swap! best (fn [best] (repr/random-representation @current-params)))
+  ;;(draw-representation @best)
+  (xhr/send "/representation/" (fn [res] (set-best res) (draw-representation @best)))
+  )
+
+(defn ^:export start
+  []
+  (.log js/console "Starting")
+  (let [timer  (goog.Timer. 500)]
     (do (iterate params)
         (. timer (start))
         (events/listen timer goog.Timer/TICK (partial iterate params)))))

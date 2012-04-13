@@ -32,6 +32,33 @@
                               :remove-polygon-thresh [0 0.2]
                               }})
 
+(defn valid-polygon?
+  [polygon]
+  (and
+   (polygon :alpha)
+   (< 2 (count (polygon :points)))
+   (polygon :color)))
+
+(defn valid-color?
+  [[r g b]]
+  (and r
+       g
+       b
+       (< 0 r)
+       (< 0 g)
+       (< 0 b)
+       (< r 256)
+       (< g 256)
+       (< b 256)))
+
+(defn valid-representation?
+  "determines if representation is valid"
+  [repr]
+  (and
+   (:background repr)
+   (valid-color? (:background repr))
+   (every? valid-polygon? (repr :polygons))))
+
 (defn random-polygon
   "produces a random polygon"
   [params]
